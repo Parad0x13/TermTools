@@ -25,31 +25,39 @@ def cursor_reset():
     cursor_move(0, 0)
 
 class Pane:
-    def __init__(self, width = 7, height = 3, x = 3, y = 3):
-        self.icon = "."
-
+    def __init__(self, x = 3, y = 3, width = 7, height = 3, background = " "):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
+        self.background = background
 
         self.subPanes: list[Pane] = []
 
-    def addPane(self, pane: Pane):
-        self.subPanes.append(pane)
+    def add_pane(self, pane: Pane):
+        if pane not in self.subPanes:
+            self.subPanes.append(pane)
+
+    def remove_pane(self, pane: Pane):
+        if pane in self.subPanes:
+            self.subPanes.remove(pane)
 
     def generateContent(self) -> list[list]:
         # [TODO] Decide if I want to do 1D array or keep this 2D array (for performance reasons)
         content = [
-            [self.icon for _ in range(self.width)]
+            [self.background for _ in range(self.width)]
             for _ in range(self.height)
         ]
 
+        # [BUG] There is a situation where a pane is drawn on the other side of the screen if it goes under x = 0
         for pane in self.subPanes:
             subContent = pane.generateContent()
             for y in range(len(subContent)):
                 for x in range(len(subContent[y])):
-                    content[y + pane.y][x + pane.x] = subContent[y][x]
+                    try:
+                        content[y + pane.y][x + pane.x] = subContent[y][x]
+                    except:
+                        pass
 
         return content
 
@@ -64,26 +72,23 @@ class Pane:
         sys.stdout.flush()
 
 tWidth, tHeight = shutil.get_terminal_size()
-mainPane = Pane(x = 0, y = 0, width = tWidth, height = tHeight)
+mainPane = Pane(x = 0, y = 0, width = tWidth, height = tHeight, background = ".")
+a = Pane(x = 1, y = 1, width = 21, height = 7, background = "a")
+b = Pane(x = 1, y = 1, width = 5, height = 3, background = "b")
 
-a = Pane(x = 1, y = 1, width = 21, height = 7)
-a.icon = "S"
+a.add_pane(b)
+mainPane.add_pane(a)
 
-b = Pane(x = 1, y = 1, width = 5, height = 3)
-b.icon = "m"
-a.addPane(b)
-
-mainPane.addPane(a)
 try:
     cursor_hide()
 
     while True:
         if msvcrt.kbhit():
             key = msvcrt.getch()
-            if   key == b"a": a.x -= 1
-            elif key == b"d": a.x += 1
-            elif key == b"w": a.y -= 1
-            elif key == b"s": a.y += 1
+            if   key == b"a": b.x -= 1
+            elif key == b"d": b.x += 1
+            elif key == b"w": b.y -= 1
+            elif key == b"s": b.y += 1
 
         mainPane.render()
         time.sleep(1.0 / 30.0)
